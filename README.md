@@ -1,8 +1,8 @@
 # InvertedIndex
 ## Background
-本项目是用Java实现的基于倒排索引的搜索引擎，在实现过程中采用了装饰者模式、迭代器模式以及工厂方法模式。
+本项目是用Java实现的基于倒排索引的搜索引擎，在实现过程中主要采用了装饰者模式和工厂方法模式。
 ## Structure
-
+![image](https://github.com/pangtongtong663/picture/blob/main/anpicture6.png)
 ## Compositions
 * AbstractTerm：其具体子类实例为一个单词term
 * AbstractTermTuple：其具体子类实例为和单词term相关的三元组，包括三个数据成员：
@@ -52,3 +52,55 @@
     * ```double score(AbstractHit hit);```：计算命中文档的得分, 作为命中结果排序的依据
 ## Design Pattern
 ### 装饰者模式
+装饰者模式主要体现在对AbstractTermTupleScanner加上各种过滤功能，实现代码如下：
+```java
+AbstractDocument document = null;
+AbstractTermTupleStream ts = null;
+try {
+   ts = new TermTupleScanner(new BufferedReader(new InputStreamReader(new FileInputStream(file))));
+   ts = new StopWordTermTupleFilter(ts);
+   ts = new PatternTermTupleFilter(ts);
+   ts = new LengthTermTupleFilter(ts);
+   document = build(docId, docPath, ts);
+} catch (FileNotFoundException e) {
+   e.printStackTrace();
+} finally {
+   ts.close();
+ }
+ return document;
+```
+### 工厂方法模式
+工厂方法模式主要用来构建索引和文本，实现代码如下：
+```java
+@Override
+public AbstractDocument build(int docId, String docPath, AbstractTermTupleStream termTupleStream) {
+     List<AbstractTermTuple> tuples = new ArrayList<>();
+     AbstractTermTuple tuple = termTupleStream.next();
+     while (tuple != null) {
+         tuples.add(tuple);
+         tuple = termTupleStream.next();
+     }
+     return new Document(docId, docPath, tuples);
+ }
+```
+```java
+@Override
+ public AbstractIndex buildIndex(String rootDirectory) {
+     try {
+         Index index = new Index();
+         File file = new File(rootDirectory);
+         String[] files = file.list();
+         for (String fileName : files) {
+             String path = rootDirectory + "\\" + fileName;
+             BufferedReader br = new BufferedReader(new FileReader(path));
+             Document document = (Document) super.docBuilder.build(super.docId, path, new File(path));
+             super.docId++;
+             index.addDocument(document);
+         }
+         return index;
+     } catch (FileNotFoundException e) {
+         e.printStackTrace();
+         return null;
+     }
+ }
+```
